@@ -343,23 +343,6 @@ const zones = core.GeneralizationEngine.process(cleaned);
   `);
 });
 
-      const color =
-        zone.risk_tier === 'high' ? 'red' :
-        zone.risk_tier === 'medium' ? 'orange' :
-        'green';
-
-      L.rectangle(bounds, {
-        color,
-        weight: 1,
-        fillOpacity: 0.4
-      })
-      .addTo(map)
-      .bindPopup(`
-        <b>Risk:</b> ${zone.risk_tier}<br>
-        Sightings: ${zone.count}<br>
-        Intensity: ${zone.kde_intensity}
-      `);
-    });
 
   } catch (err) {
     console.error("ERROR:", err);
