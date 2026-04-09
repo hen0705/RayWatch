@@ -525,18 +525,28 @@ document.getElementById('type-cards').querySelectorAll('.type-card').forEach(c =
 // ── GPS ──
 document.getElementById('btn-gps').addEventListener('click', () => {
   const status = document.getElementById('gps-status');
+
   status.textContent = 'Locating…';
-  status.className = 'gps-status';
-  navigator.geolocation.getCurrentPosition(pos => {
-    document.getElementById('lat').value = pos.coords.latitude.toFixed(5);
-    document.getElementById('lng').value = pos.coords.longitude.toFixed(5);
-    status.textContent = `Location acquired (±${Math.round(pos.coords.accuracy)}m)`;
-    status.className = 'gps-status ok';
-    updateProgress();
-  }, err => {
-    status.textContent = 'Could not get location — enter coordinates manually';
-    status.className = 'gps-status err';
-  });
+
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      console.log("GPS SUCCESS:", pos);
+
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+
+      document.getElementById('lat').value = lat;
+      document.getElementById('lng').value = lng;
+
+      status.textContent = 'Location acquired';
+      status.className = 'gps-status ok';
+    },
+    (err) => {
+      console.error("GPS ERROR:", err);
+      status.textContent = 'Location failed';
+      status.className = 'gps-status err';
+    }
+  );
 });
 
 // ── Photo upload ──
