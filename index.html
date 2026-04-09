@@ -1,13 +1,123 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>RayWatch</title>
-</head>
-<body>
-  <h1>RayWatch</h1>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RayWatch</title>
 
-  <a href="map.html">Map</a><br>
-  <a href="submit.html">Submit</a><br>
-  <a href="admin.html">Admin</a>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+
+<style>
+body {
+  margin: 0;
+  font-family: 'DM Sans', sans-serif;
+  background: #0a1628;
+  color: #e8f4f0;
+  overflow-x: hidden;
+}
+
+/* NAV */
+.nav {
+  display: flex;
+  justify-content: space-between;
+  padding: 16px 24px;
+  background: rgba(13,32,64,0.9);
+  border-bottom: 1px solid rgba(79,184,160,0.2);
+}
+
+.nav a {
+  color: rgba(232,244,240,0.6);
+  text-decoration: none;
+  margin-left: 16px;
+}
+
+.nav a:hover {
+  color: #4fb8a0;
+}
+
+/* HERO */
+.hero {
+  text-align: center;
+  padding: 100px 20px;
+  position: relative;
+}
+
+.hero h1 {
+  font-family: 'Syne';
+  font-size: 3rem;
+  margin-bottom: 10px;
+}
+
+.hero p {
+  color: rgba(232,244,240,0.6);
+  margin-bottom: 30px;
+}
+
+/* BUTTONS */
+.buttons button {
+  padding: 12px 20px;
+  margin: 8px;
+  border-radius: 25px;
+  border: none;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.primary {
+  background: #4fb8a0;
+  color: #0a1628;
+}
+
+.secondary {
+  background: transparent;
+  border: 1px solid rgba(79,184,160,0.3);
+  color: #4fb8a0;
+}
+
+/* STINGRAY */
+.ray {
+  position: absolute;
+  top: 30%;
+  right: 10%;
+  width: 300px;
+  opacity: 0.3;
+  animation: float 6s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%,100% { transform: translateY(0px); }
+  50% { transform: translateY(-20px); }
+}
+</style>
+</head>
+
+<body>
+
+<!-- NAV -->
+<div class="nav">
+  <div><strong>RayWatch</strong></div>
+  <div>
+    <a href="map.html">Map</a>
+    <a href="submit.html">Submit</a>
+    <a href="admin.html">Admin</a>
+  </div>
+</div>
+
+<!-- HERO -->
+<div class="hero">
+  <h1>Track cownose ray migration</h1>
+  <p>Real-time sightings across the Chesapeake and Mid-Atlantic</p>
+
+  <div class="buttons">
+    <button class="primary" onclick="location.href='map.html'">View Map</button>
+    <button class="secondary" onclick="location.href='submit.html'">Report Sighting</button>
+  </div>
+
+  <!-- Stingray SVG -->
+  <svg class="ray" viewBox="0 0 200 100">
+    <path d="M10,50 Q100,10 190,50 Q100,90 10,50 Z" fill="#4fb8a0"/>
+  </svg>
+</div>
+
 </body>
 </html>
