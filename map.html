@@ -294,12 +294,24 @@ async function loadMap() {
     // run your engine
     const cleaned = data.map(d => ({
   ...d,
-  submitted_at: d.submitted_at || new Date().toISOString()
+  lat: parseFloat(d.lat),
+  lng: parseFloat(d.lng),
+  count: parseInt(d.count) || 1,
+  submitted_at: d.submitted_at && !isNaN(new Date(d.submitted_at))
+    ? d.submitted_at
+    : new Date().toISOString()
 }));
 
 const zones = core.GeneralizationEngine.process(cleaned);
 
     zones.forEach(zone => {
+  if (
+    isNaN(zone.cell_lat) ||
+    isNaN(zone.cell_lng)
+  ) {
+    console.warn("Skipping bad zone:", zone);
+    return;
+  }
       const size = zone.cell_size_deg / 2;
 
       const bounds = [
