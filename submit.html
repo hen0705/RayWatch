@@ -654,7 +654,13 @@ document.getElementById('btn-submit').addEventListener('click', async () => {
   // send to Supabase
 const { data, error } = await supabase
   .from('sightings')
-  .insert([payload]);
+  .insert([{
+    lat: payload.lat,
+    lng: payload.lng,
+    count: payload.count,
+    status: 'pending',
+    submitted_at: payload.submitted_at
+  }]);
 
 if (error) {
   console.error(error);
