@@ -302,7 +302,23 @@ async function loadMap() {
     : new Date().toISOString()
 }));
 
-const zones = core.GeneralizationEngine.process(cleaned);
+cleaned.forEach(d => {
+  const lat = Number(d.lat);
+  const lng = Number(d.lng);
+
+  if (!isFinite(lat) || !isFinite(lng)) return;
+
+  L.circleMarker([lat, lng], {
+    radius: 6,
+    color: "#4fb8a0",
+    fillOpacity: 0.8
+  })
+  .addTo(map)
+  .bindPopup(`
+    <b>${d.count} rays</b><br>
+    ${lat.toFixed(3)}, ${lng.toFixed(3)}
+  `);
+});
 
     zones.forEach(zone => {
   if (
