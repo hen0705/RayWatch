@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RayWatch — Report a Sighting</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ocean: #0a1628;
+  --deep:  #0d2040;
+  --mid:   #143258;
+  --surf:  #1a4a7a;
+  --foam:  #e8f4f0;
+  --ray:   #4fb8a0;
+  --ray2:  #2d9a80;
+  --sand:  #f5ede0;
+  --warn:  #e8834a;
+  --text:  #e8f4f0;
+  --muted: rgba(232,244,240,0.55);
+  --border:rgba(79,184,160,0.22);
+  --radius:12px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{font-size:16px}
+body{
+  background:var(--ocean);
+  color:var(--text);
+  font-family:'DM Sans',sans-serif;
+  font-weight:300;
+  min-height:100vh;
+  position:relative;
+  overflow-x:hidden;
+}
+/* wave bg */
+body::before{
+  content:'';
+  position:fixed;top:0;left:0;right:0;bottom:0;
+  background:
+    radial-gradient(ellipse 80% 40% at 20% 10%, rgba(26,74,122,0.6) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 80% 80%, rgba(13,32,64,0.8) 0%, transparent 70%);
+  pointer-events:none;z-index:0;
+}
+.wrapper{position:relative;z-index:1;max-width:680px;margin:0 auto;padding:2rem 1.5rem 4rem;}
+
+/* Header */
+.site-header{display:flex;align-items:center;gap:14px;margin-bottom:2.5rem;padding-bottom:1.5rem;border-bottom:1px solid var(--border);}
+.logo{width:42px;height:42px;background:var(--ray);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.logo svg{width:24px;height:24px;}
+.site-name{font-family:'Syne',sans-serif;font-size:1.3rem;font-weight:700;letter-spacing:-.01em;}
+.site-sub{font-size:.8rem;color:var(--muted);margin-top:1px;}
+.nav-link{margin-left:auto;font-size:.8rem;color:var(--ray);text-decoration:none;opacity:.8;}
+.nav-link:hover{opacity:1;}
+
+h1{font-family:'Syne',sans-serif;font-size:2rem;font-weight:700;line-height:1.15;margin-bottom:.5rem;}
+h1 span{color:var(--ray);}
+.subtitle{font-size:.95rem;color:var(--muted);margin-bottom:2rem;line-height:1.6;}
+
+/* Progress */
+.progress-bar{display:flex;gap:6px;margin-bottom:2rem;}
+.prog-step{flex:1;height:3px;border-radius:2px;background:rgba(79,184,160,0.2);transition:background .4s;}
+.prog-step.done{background:var(--ray);}
+.prog-step.active{background:var(--ray);opacity:.7;}
+
+/* Cards */
+.card{
+  background:rgba(26,74,122,0.18);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:1.5rem;
+  margin-bottom:1rem;
+}
+.card-title{
+  font-family:'Syne',sans-serif;font-size:.75rem;font-weight:600;
+  letter-spacing:.1em;text-transform:uppercase;
+  color:var(--ray);margin-bottom:1.2rem;display:flex;align-items:center;gap:8px;
+}
+.card-title .step-num{
+  width:20px;height:20px;background:var(--ray);border-radius:50%;
+  font-size:.65rem;color:var(--ocean);font-weight:700;
+  display:flex;align-items:center;justify-content:center;
+}
+
+/* Fields */
+.field-row{display:grid;gap:12px;margin-bottom:12px;}
+.field-row.cols-2{grid-template-columns:1fr 1fr;}
+.field-row.cols-3{grid-template-columns:1fr 1fr 1fr;}
+label{font-size:.8rem;color:var(--muted);display:block;margin-bottom:5px;font-weight:400;}
+label .req{color:var(--ray);margin-left:2px;}
+input[type=text],input[type=email],input[type=number],input[type=date],input[type=time],select,textarea{
+  width:100%;
+  background:rgba(10,22,40,0.5);
+  border:1px solid var(--border);
+  border-radius:8px;
+  color:var(--text);
+  font-family:'DM Sans',sans-serif;
+  font-size:.9rem;
+  font-weight:300;
+  padding:10px 13px;
+  outline:none;
+  transition:border-color .2s,background .2s;
+  -webkit-appearance:none;
+}
+input:focus,select:focus,textarea:focus{
+  border-color:var(--ray);
+  background:rgba(10,22,40,0.75);
+}
+input::placeholder,textarea::placeholder{color:rgba(232,244,240,0.3);}
+select option{background:var(--deep);color:var(--text);}
+textarea{resize:vertical;min-height:80px;}
+input.error,select.error,textarea.error{border-color:var(--warn);}
+.field-error{font-size:.75rem;color:var(--warn);margin-top:4px;display:none;}
+.field-error.show{display:block;}
+
+/* GPS button */
+.gps-row{display:flex;gap:8px;align-items:flex-end;}
+.gps-row .inputs{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.btn-gps{
+  flex-shrink:0;
+  background:rgba(79,184,160,0.12);
+  border:1px solid var(--border);
+  border-radius:8px;
+  color:var(--ray);
+  font-family:'DM Sans',sans-serif;
+  font-size:.8rem;
+  padding:10px 14px;
+  cursor:pointer;
+  white-space:nowrap;
+  transition:background .2s;
+  height:42px;
+}
+.btn-gps:hover{background:rgba(79,184,160,0.22);}
+.gps-status{font-size:.75rem;margin-top:4px;color:var(--muted);}
+.gps-status.ok{color:var(--ray);}
+.gps-status.err{color:var(--warn);}
+
+/* Count slider */
+.count-display{
+  display:flex;align-items:center;gap:12px;
+}
+.count-display input[type=range]{flex:1;accent-color:var(--ray);}
+.count-display .count-val{
+  font-family:'Syne',sans-serif;font-size:1.2rem;font-weight:700;
+  color:var(--ray);min-width:48px;text-align:right;
+}
+.count-note{font-size:.75rem;color:var(--muted);margin-top:4px;}
+
+/* Behavior chips */
+.chip-row{display:flex;flex-wrap:wrap;gap:7px;}
+.chip{
+  padding:6px 14px;
+  border-radius:100px;
+  border:1px solid var(--border);
+  font-size:.8rem;
+  cursor:pointer;
+  transition:all .15s;
+  background:transparent;
+  color:var(--muted);
+  font-family:'DM Sans',sans-serif;
+}
+.chip:hover{border-color:var(--ray);color:var(--text);}
+.chip.selected{background:var(--ray);border-color:var(--ray);color:var(--ocean);font-weight:500;}
+
+/* Photo drop zone */
+.dropzone{
+  border:1.5px dashed var(--border);
+  border-radius:var(--radius);
+  padding:2rem;
+  text-align:center;
+  cursor:pointer;
+  transition:border-color .2s,background .2s;
+  position:relative;
+}
+.dropzone:hover,.dropzone.drag{
+  border-color:var(--ray);
+  background:rgba(79,184,160,0.05);
+}
+.dropzone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;}
+.dropzone-icon{font-size:2rem;margin-bottom:.5rem;opacity:.4;}
+.dropzone-text{font-size:.85rem;color:var(--muted);}
+.dropzone-text strong{color:var(--ray);}
+.photo-preview{
+  display:none;
+  margin-top:12px;
+  position:relative;
+  border-radius:8px;
+  overflow:hidden;
+  max-height:180px;
+}
+.photo-preview img{width:100%;height:180px;object-fit:cover;display:block;}
+.photo-preview .remove-photo{
+  position:absolute;top:8px;right:8px;
+  background:rgba(10,22,40,0.8);
+  border:1px solid var(--border);
+  border-radius:50%;
+  width:26px;height:26px;
+  cursor:pointer;color:var(--text);
+  font-size:.85rem;display:flex;align-items:center;justify-content:center;
+}
+
+/* Submitter type */
+.type-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.type-card{
+  padding:12px 10px;
+  border:1px solid var(--border);
+  border-radius:8px;
+  text-align:center;
+  cursor:pointer;
+  transition:all .15s;
+  background:transparent;
+}
+.type-card:hover{border-color:var(--ray);}
+.type-card.selected{border-color:var(--ray);background:rgba(79,184,160,0.1);}
+.type-card .type-icon{font-size:1.4rem;margin-bottom:4px;}
+.type-card .type-label{font-size:.75rem;color:var(--muted);}
+.type-card.selected .type-label{color:var(--ray);}
+
+/* Submit button */
+.btn-submit{
+  width:100%;
+  background:var(--ray);
+  color:var(--ocean);
+  border:none;
+  border-radius:var(--radius);
+  font-family:'Syne',sans-serif;
+  font-size:1rem;
+  font-weight:700;
+  letter-spacing:.03em;
+  padding:14px;
+  cursor:pointer;
+  transition:background .2s,transform .1s;
+  margin-top:1.2rem;
+}
+.btn-submit:hover{background:var(--ray2);}
+.btn-submit:active{transform:scale(.99);}
+.btn-submit:disabled{opacity:.5;cursor:not-allowed;}
+
+/* Privacy note */
+.privacy-note{
+  display:flex;align-items:flex-start;gap:10px;
+  background:rgba(79,184,160,0.06);
+  border:1px solid var(--border);
+  border-radius:8px;
+  padding:12px;
+  margin-top:12px;
+  font-size:.78rem;
+  color:var(--muted);
+  line-height:1.5;
+}
+.privacy-note .icon{flex-shrink:0;color:var(--ray);margin-top:1px;}
+
+/* Success screen */
+.success-screen{
+  display:none;
+  text-align:center;
+  padding:3rem 1rem;
+}
+.success-screen.show{display:block;}
+.success-ray{
+  width:72px;height:72px;
+  background:rgba(79,184,160,0.15);
+  border:2px solid var(--ray);
+  border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  margin:0 auto 1.5rem;
+  font-size:2rem;
+}
+.success-screen h2{font-family:'Syne',sans-serif;font-size:1.6rem;margin-bottom:.75rem;}
+.success-screen p{color:var(--muted);font-size:.9rem;line-height:1.6;max-width:380px;margin:0 auto 1.5rem;}
+.success-id{
+  font-family:monospace;font-size:.8rem;
+  background:rgba(79,184,160,0.08);
+  border:1px solid var(--border);
+  padding:6px 14px;border-radius:100px;
+  color:var(--ray);display:inline-block;margin-bottom:1.5rem;
+}
+.btn-another{
+  background:transparent;
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  color:var(--ray);
+  font-family:'DM Sans',sans-serif;
+  font-size:.9rem;
+  padding:10px 24px;
+  cursor:pointer;
+}
+.btn-another:hover{background:rgba(79,184,160,0.08);}
+
+/* Loading spinner */
+.spinner{
+  display:inline-block;
+  width:16px;height:16px;
+  border:2px solid rgba(10,22,40,0.3);
+  border-top-color:var(--ocean);
+  border-radius:50%;
+  animation:spin .6s linear infinite;
+  vertical-align:middle;margin-right:6px;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Fade in */
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.card{animation:fadeUp .4s ease both;}
+.card:nth-child(1){animation-delay:.05s}
+.card:nth-child(2){animation-delay:.12s}
+.card:nth-child(3){animation-delay:.19s}
+.card:nth-child(4){animation-delay:.26s}
+
+@media(max-width:500px){
+  .field-row.cols-2,.field-row.cols-3{grid-template-columns:1fr;}
+  .type-cards{grid-template-columns:1fr 1fr 1fr;}
+}
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <header class="site-header">
+    <div class="logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="var(--ocean)" stroke-width="2" stroke-linecap="round">
+        <path d="M12 4 C6 4 2 10 2 14 C2 18 6 20 12 20 C18 20 22 18 22 14 C22 10 18 4 12 4Z"/>
+        <path d="M12 20 L8 23 M12 20 L16 23"/>
+        <circle cx="9" cy="12" r="1" fill="var(--ocean)"/>
+      </svg>
+    </div>
+    <div>
+      <div class="site-name">RayWatch</div>
+      <div class="site-sub">Cownose Ray Migration Tracker</div>
+    </div>
+    <a href="map.html" class="nav-link">View migration map →</a>
+  </header>
+
+  <div id="form-section">
+    <h1>Report a <span>sighting</span></h1>
+    <p class="subtitle">Help track cownose ray migration. Your exact location is kept private — only generalized zones are shown publicly.</p>
+
+    <div class="progress-bar">
+      <div class="prog-step active" id="prog-0"></div>
+      <div class="prog-step" id="prog-1"></div>
+      <div class="prog-step" id="prog-2"></div>
+      <div class="prog-step" id="prog-3"></div>
+    </div>
+
+    <!-- Card 1: Location -->
+    <div class="card">
+      <div class="card-title"><span class="step-num">1</span> Location & time</div>
+      <div class="gps-row" style="margin-bottom:12px;">
+        <div class="inputs">
+          <div>
+            <label>Latitude <span class="req">*</span></label>
+            <input type="number" id="lat" step="0.00001" placeholder="36.85000" min="-90" max="90">
+            <div class="field-error" id="lat-err">Enter a valid latitude</div>
+          </div>
+          <div>
+            <label>Longitude <span class="req">*</span></label>
+            <input type="number" id="lng" step="0.00001" placeholder="-75.98000" min="-180" max="180">
+            <div class="field-error" id="lng-err">Enter a valid longitude</div>
+          </div>
+        </div>
+        <button class="btn-gps" id="btn-gps">Use GPS</button>
+      </div>
+      <div class="gps-status" id="gps-status"></div>
+      <div class="field-row cols-2" style="margin-top:10px;">
+        <div>
+          <label>Date <span class="req">*</span></label>
+          <input type="date" id="obs-date">
+          <div class="field-error" id="date-err">Date is required</div>
+        </div>
+        <div>
+          <label>Time (approx.)</label>
+          <input type="time" id="obs-time">
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 2: Observation -->
+    <div class="card">
+      <div class="card-title"><span class="step-num">2</span> Observation details</div>
+      <div style="margin-bottom:12px;">
+        <label>Estimated ray count <span class="req">*</span></label>
+        <div class="count-display">
+          <input type="range" id="count-slider" min="1" max="500" value="10" step="1">
+          <div class="count-val" id="count-val">10</div>
+        </div>
+        <div class="count-note" id="count-note">Use best estimate for large schools</div>
+      </div>
+      <div style="margin-bottom:12px;">
+        <label>Behavior observed</label>
+        <div class="chip-row" id="behavior-chips">
+          <div class="chip" data-val="feeding">Feeding</div>
+          <div class="chip" data-val="transiting">Transiting</div>
+          <div class="chip" data-val="resting">Resting</div>
+          <div class="chip" data-val="unknown">Not sure</div>
+        </div>
+      </div>
+      <div class="field-row cols-2">
+        <div>
+          <label>Water depth (m)</label>
+          <input type="number" id="depth" step="0.5" min="0" max="200" placeholder="e.g. 3">
+        </div>
+        <div>
+          <label>Water temp (°C)</label>
+          <input type="number" id="temp" step="0.5" min="0" max="35" placeholder="e.g. 22">
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 3: Photo & notes -->
+    <div class="card">
+      <div class="card-title"><span class="step-num">3</span> Photo & notes</div>
+      <div class="dropzone" id="dropzone">
+        <input type="file" id="photo-input" accept="image/*" capture="environment">
+        <div class="dropzone-icon">+</div>
+        <div class="dropzone-text">Drop a photo or <strong>tap to upload</strong><br><span style="font-size:.75rem;opacity:.6">Optional — EXIF location data stripped automatically</span></div>
+      </div>
+      <div class="photo-preview" id="photo-preview">
+        <img id="preview-img" src="" alt="Sighting photo">
+        <button class="remove-photo" id="remove-photo">×</button>
+      </div>
+      <div style="margin-top:12px;">
+        <label>Additional notes</label>
+        <textarea id="notes" placeholder="Any other observations — water clarity, weather, nearby vessels…"></textarea>
+      </div>
+    </div>
+
+    <!-- Card 4: About you -->
+    <div class="card">
+      <div class="card-title"><span class="step-num">4</span> About you (optional)</div>
+      <div style="margin-bottom:14px;">
+        <label>I am a…</label>
+        <div class="type-cards" id="type-cards">
+          <div class="type-card selected" data-val="public">
+            <div class="type-icon">👤</div>
+            <div class="type-label">Member of public</div>
+          </div>
+          <div class="type-card" data-val="fisherman">
+            <div class="type-icon">⚓</div>
+            <div class="type-label">Fisher / waterman</div>
+          </div>
+          <div class="type-card" data-val="researcher">
+            <div class="type-icon">🔬</div>
+            <div class="type-label">Researcher</div>
+          </div>
+        </div>
+      </div>
+      <div class="field-row cols-2">
+        <div>
+          <label>Name</label>
+          <input type="text" id="sub-name" placeholder="Optional">
+        </div>
+        <div>
+          <label>Email (for updates)</label>
+          <input type="email" id="sub-email" placeholder="Optional">
+        </div>
+      </div>
+    </div>
+
+    <div class="privacy-note">
+      <span class="icon">🔒</span>
+      <span>Your exact coordinates are stored privately and never shown publicly. Only generalized zone data (≈15km cells) is displayed on the public map. Email is used only to notify you when your sighting is approved.</span>
+    </div>
+
+    <button class="btn-submit" id="btn-submit">Submit sighting</button>
+  </div>
+
+  <!-- Success -->
+  <div class="success-screen" id="success-screen">
+    <div class="success-ray">✓</div>
+    <h2>Sighting submitted</h2>
+    <p>Thank you for contributing to cownose ray migration research. Your sighting is in the review queue and will appear on the map once approved.</p>
+    <div class="success-id" id="success-id">ID: —</div>
+    <br>
+    <button class="btn-another" id="btn-another">Submit another sighting</button>
+  </div>
+</div>
+
+<script>
+// ── Inline core (subset needed for submission) ──
+function uuid(){return'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.random()*16|0;return(c==='x'?r:(r&0x3|0x8)).toString(16)});}
+function snapToGrid(lat,lng,cs=0.15){const cl=Math.floor(lat/cs)*cs+cs/2,cg=Math.floor(lng/cs)*cs+cs/2;return{cell_lat:+cl.toFixed(5),cell_lng:+cg.toFixed(5)};}
+
+// ── State ──
+let selectedBehavior = null;
+let selectedType = 'public';
+let photoFile = null;
+
+// ── Today's date default ──
+document.getElementById('obs-date').valueAsDate = new Date();
+
+// ── Count slider ──
+const slider = document.getElementById('count-slider');
+const countVal = document.getElementById('count-val');
+const countNote = document.getElementById('count-note');
+slider.addEventListener('input', () => {
+  const v = +slider.value;
+  countVal.textContent = v >= 500 ? '500+' : v;
+  countNote.textContent = v < 5 ? 'Individual rays' : v < 50 ? 'Small school' : v < 200 ? 'Medium aggregation' : 'Large school or migration front';
+});
+
+// ── Behavior chips ──
+document.getElementById('behavior-chips').querySelectorAll('.chip').forEach(c => {
+  c.addEventListener('click', () => {
+    document.querySelectorAll('.chip').forEach(x => x.classList.remove('selected'));
+    c.classList.add('selected');
+    selectedBehavior = c.dataset.val;
+  });
+});
+
+// ── Submitter type ──
+document.getElementById('type-cards').querySelectorAll('.type-card').forEach(c => {
+  c.addEventListener('click', () => {
+    document.querySelectorAll('.type-card').forEach(x => x.classList.remove('selected'));
+    c.classList.add('selected');
+    selectedType = c.dataset.val;
+  });
+});
+
+// ── GPS ──
+document.getElementById('btn-gps').addEventListener('click', () => {
+  const status = document.getElementById('gps-status');
+  status.textContent = 'Locating…';
+  status.className = 'gps-status';
+  navigator.geolocation.getCurrentPosition(pos => {
+    document.getElementById('lat').value = pos.coords.latitude.toFixed(5);
+    document.getElementById('lng').value = pos.coords.longitude.toFixed(5);
+    status.textContent = `Location acquired (±${Math.round(pos.coords.accuracy)}m)`;
+    status.className = 'gps-status ok';
+    updateProgress();
+  }, err => {
+    status.textContent = 'Could not get location — enter coordinates manually';
+    status.className = 'gps-status err';
+  });
+});
+
+// ── Photo upload ──
+const dropzone = document.getElementById('dropzone');
+const photoInput = document.getElementById('photo-input');
+const photoPreview = document.getElementById('photo-preview');
+const previewImg = document.getElementById('preview-img');
+
+function showPreview(file) {
+  const url = URL.createObjectURL(file);
+  previewImg.src = url;
+  photoPreview.style.display = 'block';
+  photoFile = file;
+}
+
+photoInput.addEventListener('change', e => { if (e.target.files[0]) showPreview(e.target.files[0]); });
+document.getElementById('remove-photo').addEventListener('click', e => {
+  e.stopPropagation();
+  photoPreview.style.display = 'none';
+  photoInput.value = '';
+  photoFile = null;
+});
+dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag'));
+dropzone.addEventListener('drop', e => {
+  e.preventDefault(); dropzone.classList.remove('drag');
+  if (e.dataTransfer.files[0]) showPreview(e.dataTransfer.files[0]);
+});
+
+// ── Progress indicator ──
+function updateProgress() {
+  const lat = document.getElementById('lat').value;
+  const lng = document.getElementById('lng').value;
+  const date = document.getElementById('obs-date').value;
+  const steps = [
+    lat && lng && date,
+    true,
+    true,
+    true,
+  ];
+  steps.forEach((done, i) => {
+    const el = document.getElementById(`prog-${i}`);
+    el.className = 'prog-step' + (done ? ' done' : i === steps.findIndex(s => !s) ? ' active' : '');
+  });
+}
+['lat','lng','obs-date'].forEach(id => document.getElementById(id).addEventListener('input', updateProgress));
+updateProgress();
+
+// ── Validation ──
+function validate() {
+  let ok = true;
+  const lat = parseFloat(document.getElementById('lat').value);
+  const lng = parseFloat(document.getElementById('lng').value);
+  const date = document.getElementById('obs-date').value;
+
+  if (isNaN(lat) || lat < -90 || lat > 90) {
+    document.getElementById('lat').classList.add('error');
+    document.getElementById('lat-err').classList.add('show');
+    ok = false;
+  } else {
+    document.getElementById('lat').classList.remove('error');
+    document.getElementById('lat-err').classList.remove('show');
+  }
+  if (isNaN(lng) || lng < -180 || lng > 180) {
+    document.getElementById('lng').classList.add('error');
+    document.getElementById('lng-err').classList.add('show');
+    ok = false;
+  } else {
+    document.getElementById('lng').classList.remove('error');
+    document.getElementById('lng-err').classList.remove('show');
+  }
+  if (!date) {
+    document.getElementById('obs-date').classList.add('error');
+    document.getElementById('date-err').classList.add('show');
+    ok = false;
+  } else {
+    document.getElementById('obs-date').classList.remove('error');
+    document.getElementById('date-err').classList.remove('show');
+  }
+  return ok;
+}
+
+// ── Submit ──
+document.getElementById('btn-submit').addEventListener('click', async () => {
+  if (!validate()) return;
+  const btn = document.getElementById('btn-submit');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Submitting…';
+
+  const lat = parseFloat(document.getElementById('lat').value);
+  const lng = parseFloat(document.getElementById('lng').value);
+  const count = +document.getElementById('count-slider').value;
+  const grid = snapToGrid(lat, lng);
+
+  const payload = {
+    id: uuid(),
+    submitted_at: new Date().toISOString(),
+    status: 'pending',
+    lat, lng,
+    accuracy_m: 20,
+    count,
+    behavior: selectedBehavior || 'unknown',
+    depth_m: parseFloat(document.getElementById('depth').value) || null,
+    water_temp_c: parseFloat(document.getElementById('temp').value) || null,
+    submitter_name: document.getElementById('sub-name').value || null,
+    submitter_email: document.getElementById('sub-email').value || null,
+    submitter_type: selectedType,
+    notes: document.getElementById('notes').value || null,
+    photo_url: null,
+    reviewed_by: null, reviewed_at: null, reject_reason: null,
+    ...grid,
+    cell_size_deg: 0.15,
+  };
+
+  // Simulate API call
+  await new Promise(r => setTimeout(r, 600));
+
+  // Store in localStorage for demo
+  const stored = JSON.parse(localStorage.getItem('rw_sightings') || '[]');
+  stored.push(payload);
+  localStorage.setItem('rw_sightings', JSON.stringify(stored));
+
+  document.getElementById('form-section').style.display = 'none';
+  const ss = document.getElementById('success-screen');
+  ss.classList.add('show');
+  document.getElementById('success-id').textContent = `Sighting ID: ${payload.id.slice(0,8).toUpperCase()}`;
+});
+
+document.getElementById('btn-another').addEventListener('click', () => {
+  document.getElementById('success-screen').classList.remove('show');
+  document.getElementById('form-section').style.display = 'block';
+  document.getElementById('lat').value = '';
+  document.getElementById('lng').value = '';
+  document.getElementById('notes').value = '';
+  document.getElementById('obs-date').valueAsDate = new Date();
+  slider.value = 10; countVal.textContent = '10';
+  photoPreview.style.display = 'none';
+  photoFile = null;
+  updateProgress();
+  window.scrollTo(0, 0);
+});
+</script>
+</body>
+</html>
