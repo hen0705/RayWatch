@@ -363,7 +363,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 
 const supabase = createClient(
   "https://bintflfjmtrpdnxyccho.supabase.co",
-  "YOUR_ANON_KEY"
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJpbnRmbGZqbXRycGRueHljY2hvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3MjEwNDEsImV4cCI6MjA5MTI5NzA0MX0.Q9CCD1S8geIwsR6bLs7TH__urE7V1U9WZsj2Isv0sfk"
 );
 // ── Inline mock data (mirrors core.js) ──────────────────────
 function uuid(){return'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.random()*16|0;return(c==='x'?r:(r&0x3|0x8)).toString(16)});}
@@ -426,8 +426,9 @@ async function loadData() {
 
   console.log("STORE:", STORE);
 
-  refreshStats();
-  renderQueue();
+  // ── Init ──
+refreshStats();
+renderQueue();
 }
 let currentFilter = 'pending';
 let currentPage = 1;
@@ -652,8 +653,8 @@ window.showSection = function(name,btn) {
 function refreshData(){refreshStats();renderQueue();}
 
 // ── Init ──
-refreshStats();
-renderQueue();
+// ── Init ──
+loadData();
 </script>
 </body>
 </html>
