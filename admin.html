@@ -363,13 +363,13 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 
 const supabase = createClient(
   "https://bintflfjmtrpdnxyccho.supabase.co",
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJpbnRmbGZqbXRycGRueHljY2hvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3MjEwNDE,ImV4cCI6MjA5MTI5NzA0MX0.Q9CCD1S8geIwsR6bLs7TH__urE7V1U9WZsj2Isv0sfk"
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJpbnRmbGZqbXRycGRueHljY2hvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3MjEwNDEsImV4cCI6MjA5MTI5NzA0MX0.Q9CCD1S8geIwsR6bLs7TH__urE7V1U9WZsj2Isv0sfk"
 );
 
 // Login check
-const { data: { user } } = await supabase.auth.getUser();
+const { data } = await supabase.auth.getSession();
 
-if (!user) {
+if (!data.session) {
   window.location.href = "login.html";
 }
 // ── Inline mock data (mirrors core.js) ──────────────────────
