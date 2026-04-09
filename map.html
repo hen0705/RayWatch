@@ -304,20 +304,44 @@ async function loadMap() {
 
 const zones = core.GeneralizationEngine.process(cleaned);
 
-    zones.forEach(zone => {
-  if (
-    isNaN(zone.cell_lat) ||
-    isNaN(zone.cell_lng)
-  ) {
-    console.warn("Skipping bad zone:", zone);
+   zones.forEach(zone => {
+  const lat = Number(zone.cell_lat);
+  const lng = Number(zone.cell_lng);
+
+  if (!isFinite(lat) || !isFinite(lng)) {
+    console.warn("Skipping invalid zone:", zone);
     return;
   }
-      const size = zone.cell_size_deg / 2;
 
-      const bounds = [
-        [zone.cell_lat - size, zone.cell_lng - size],
-        [zone.cell_lat + size, zone.cell_lng + size]
-      ];
+  const size = Number(zone.cell_size_deg) / 2;
+
+  if (!isFinite(size)) {
+    console.warn("Bad size:", zone);
+    return;
+  }
+
+  const bounds = [
+    [lat - size, lng - size],
+    [lat + size, lng + size]
+  ];
+
+  const color =
+    zone.risk_tier === 'high' ? 'red' :
+    zone.risk_tier === 'medium' ? 'orange' :
+    'green';
+
+  L.rectangle(bounds, {
+    color,
+    weight: 1,
+    fillOpacity: 0.4
+  })
+  .addTo(map)
+  .bindPopup(`
+    <b>Risk:</b> ${zone.risk_tier}<br>
+    Sightings: ${zone.count}<br>
+    Intensity: ${zone.kde_intensity}
+  `);
+});
 
       const color =
         zone.risk_tier === 'high' ? 'red' :
