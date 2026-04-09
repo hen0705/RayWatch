@@ -232,6 +232,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
           <div class="admin-name">Admin</div>
           <div class="admin-role">admin@raywatch.org</div>
         </div>
+        <button onclick="logout()">Logout</button>
       </div>
     </div>
   </aside>
@@ -502,7 +503,10 @@ function renderPagination(pages,cur){
 }
 window.goPage = function(p) {currentPage=p;renderQueue();}
 window.setFilter = function(f,el) {currentFilter=f;currentPage=1;document.querySelectorAll('.filter-tab').forEach(t=>t.classList.remove('active'));el.classList.add('active');renderQueue();}
-
+window.logout = async function () {
+  await supabase.auth.signOut();
+  window.location.href = "login.html";
+};
 // ── Quick row actions ──
 window.quickAction = async function(e,id,action) {
   e.stopPropagation();
