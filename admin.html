@@ -465,11 +465,11 @@ function renderPagination(pages,cur){
   for(let i=1;i<=pages;i++)html+=`<button class="page-btn${i===cur?' active':''}" onclick="goPage(${i})">${i}</button>`;
   el.innerHTML=html;
 }
-function goPage(p){currentPage=p;renderQueue();}
-function setFilter(f,el){currentFilter=f;currentPage=1;document.querySelectorAll('.filter-tab').forEach(t=>t.classList.remove('active'));el.classList.add('active');renderQueue();}
+window.goPage = function(p) {currentPage=p;renderQueue();}
+window.setFilter = function(f,el) {currentFilter=f;currentPage=1;document.querySelectorAll('.filter-tab').forEach(t=>t.classList.remove('active'));el.classList.add('active');renderQueue();}
 
 // ── Quick row actions ──
-async function quickAction(e,id,action){
+window.quickAction = async function(e,id,action) {
   e.stopPropagation();
 
   const newStatus = action === 'approve' ? 'approved' : 'rejected';
@@ -612,7 +612,7 @@ function renderTelemLog(){
 }
 
 // ── Section navigation ──
-function showSection(name,btn){
+window.showSection = function(name,btn) {
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
   document.getElementById('sec-'+name).classList.add('active');
