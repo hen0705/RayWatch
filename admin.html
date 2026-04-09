@@ -358,7 +358,13 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
   </div>
 </div>
 
-<script>
+<script type="module">
+  import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
+
+const supabase = createClient(
+  "https://bintflfjmtrpdnxyccho.supabase.co",
+  "YOUR_ANON_KEY"
+);
 // ── Inline mock data (mirrors core.js) ──────────────────────
 function uuid(){return'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.random()*16|0;return(c==='x'?r:(r&0x3|0x8)).toString(16)});}
 function rng(seed){let s=seed;return()=>{s=(s*16807)%2147483647;return(s-1)/2147483646};}
@@ -382,7 +388,20 @@ function generateSightings(){
   return s;
 }
 
-let STORE = generateSightings();
+let STORE = [];
+async function loadData() {
+  const { data, error } = await supabase
+    .from('sightings')
+    .select('*');
+
+  if (error) {
+    console.error(error);
+    return;
+  }
+
+  STORE = data;
+  loadData();
+}
 let currentFilter = 'pending';
 let currentPage = 1;
 const PAGE_SIZE = 12;
@@ -450,17 +469,25 @@ function goPage(p){currentPage=p;renderQueue();}
 function setFilter(f,el){currentFilter=f;currentPage=1;document.querySelectorAll('.filter-tab').forEach(t=>t.classList.remove('active'));el.classList.add('active');renderQueue();}
 
 // ── Quick row actions ──
-function quickAction(e,id,action){
+async function quickAction(e,id,action){
   e.stopPropagation();
-  const s=STORE.find(x=>x.id===id);
-  if(!s)return;
-  s.status=action==='approve'?'approved':'rejected';
-  s.reviewed_by='admin@raywatch.org';
-  s.reviewed_at=new Date().toISOString();
-  if(selectedSighting?.id===id)selectedSighting=s;
-  refreshStats();renderQueue();
-  if(document.getElementById('detail-panel').classList.contains('open'))renderDetail(s);
+
+  const newStatus = action === 'approve' ? 'approved' : 'rejected';
+
+  const { error } = await supabase
+    .from('sightings')
+    .update({ status: newStatus })
+    .eq('id', id);
+
+  if (error) {
+    console.error(error);
+    alert("Update failed");
+    return;
+  }
+
+  loadData(); // refresh from DB
 }
+
 
 // ── Detail panel ──
 function openDetail(id){
