@@ -20,16 +20,22 @@ window.login = async function () {
   const email = document.getElementById('email').value;
   const password = document.getElementById('password').value;
 
-  const { error } = await supabase.auth.signInWithPassword({
+  const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password
   });
 
+  console.log("LOGIN RESULT:", data, error);
+
   if (error) {
     alert(error.message);
-  } else {
-    window.location.href = "admin.html";
+    return;
   }
+
+  // 🔥 force redirect after successful login
+  setTimeout(() => {
+    window.location.replace("admin.html");
+  }, 200);
 };
 </script>
 
