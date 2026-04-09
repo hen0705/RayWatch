@@ -254,47 +254,82 @@ select.map-select option{background:var(--deep);}
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
 <script type="module">
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
 import core from './core.js';
-const API = core.API;
+
+const supabase = createClient(
+  "https://bintflfjmtrpdnxyccho.supabase.co",
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJpbnRmbGZqbXRycGRueHljY2hvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3MjEwNDEsImV4cCI6MjA5MTI5NzA0MX0.Q9CCD1S8geIwsR6bLs7TH__urE7V1U9WZsj2Isv0sfk"
+);
+
 const map = L.map('map').setView([36.8, -75.9], 7);
 
 L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
   attribution: '&copy; OpenStreetMap &copy; CartoDB'
 }).addTo(map);
+
+// prevent UI errors
 window.toggleLayer = () => {};
 window.zoom = () => {};
 window.resetView = () => {};
 window.onSeasonChange = () => {};
 window.redraw = () => {};
+
 async function loadMap() {
-  const zones = await API.getPublicRiskZones();
+  try {
+    console.log("Fetching from Supabase...");
 
-  zones.forEach(zone => {
-    const size = zone.cell_size_deg / 2;
+    const { data, error } = await supabase
+      .from('sightings')
+      .select('*')
+      .eq('status', 'approved');
 
-    const bounds = [
-      [zone.cell_lat - size, zone.cell_lng - size],
-      [zone.cell_lat + size, zone.cell_lng + size]
-    ];
+    if (error) {
+      console.error(error);
+      return;
+    }
 
-    const color =
-      zone.risk_tier === 'high' ? 'red' :
-      zone.risk_tier === 'medium' ? 'orange' :
-      'green';
+    console.log("DATA:", data);
 
-    L.rectangle(bounds, {
-      color,
-      weight: 1,
-      fillOpacity: 0.4
-    })
-    .addTo(map)
-    .bindPopup(`
-      <b>Risk:</b> ${zone.risk_tier}<br>
-      Sightings: ${zone.count}<br>
-      Intensity: ${zone.kde_intensity}
-    `);
-  });
-  document.getElementById('map-loading').classList.add('hide');
+    // run your engine
+    const cleaned = data.map(d => ({
+  ...d,
+  submitted_at: d.submitted_at || new Date().toISOString()
+}));
+
+const zones = core.GeneralizationEngine.process(cleaned);
+
+    zones.forEach(zone => {
+      const size = zone.cell_size_deg / 2;
+
+      const bounds = [
+        [zone.cell_lat - size, zone.cell_lng - size],
+        [zone.cell_lat + size, zone.cell_lng + size]
+      ];
+
+      const color =
+        zone.risk_tier === 'high' ? 'red' :
+        zone.risk_tier === 'medium' ? 'orange' :
+        'green';
+
+      L.rectangle(bounds, {
+        color,
+        weight: 1,
+        fillOpacity: 0.4
+      })
+      .addTo(map)
+      .bindPopup(`
+        <b>Risk:</b> ${zone.risk_tier}<br>
+        Sightings: ${zone.count}<br>
+        Intensity: ${zone.kde_intensity}
+      `);
+    });
+
+  } catch (err) {
+    console.error("ERROR:", err);
+  } finally {
+    document.getElementById('map-loading').classList.add('hide');
+  }
 }
 
 loadMap();
