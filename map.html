@@ -254,8 +254,8 @@ select.map-select option{background:var(--deep);}
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
 <script type="module">
-import { API } from './core.js';
-
+import core from './core.js';
+const API = core.API;
 const map = L.map('map').setView([36.8, -75.9], 7);
 
 L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
