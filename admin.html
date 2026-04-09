@@ -359,6 +359,11 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 </div>
 
 <script type="module">
+  const { data: { user } } = await supabase.auth.getUser();
+
+if (!user) {
+  window.location.href = "login.html";
+}
   import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
 
 const supabase = createClient(
