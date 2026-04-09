@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>RayWatch — Migration Map</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 <style>
 :root{
   --ocean:#0a1628;--deep:#0d2040;--mid:#143258;--surf:#1a4a7a;
@@ -41,8 +42,6 @@ header{
 
 /* ── Map area ── */
 .map-container{position:relative;overflow:hidden;}
-#mapCanvas{display:block;width:100%;height:100%;cursor:grab;}
-#mapCanvas:active{cursor:grabbing;}
 
 /* ── Controls panel ── */
 .controls{
@@ -68,6 +67,7 @@ select.map-select{
   width:100%;background:rgba(10,22,40,0.6);border:1px solid var(--border);
   border-radius:6px;color:var(--text);font-family:'DM Sans',sans-serif;
   font-size:.82rem;padding:6px 10px;outline:none;-webkit-appearance:none;
+  appearance: none;
 }
 select.map-select option{background:var(--deep);}
 
@@ -151,6 +151,10 @@ select.map-select option{background:var(--deep);}
 .map-loading.hide{opacity:0;pointer-events:none;}
 .spinner{width:28px;height:28px;border:2px solid rgba(79,184,160,0.2);border-top-color:var(--ray);border-radius:50%;animation:spin .7s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg)}}
+#map {
+  height: 100%;
+  z-index: 1;
+}
 </style>
 </head>
 <body>
@@ -172,7 +176,7 @@ select.map-select option{background:var(--deep);}
   </header>
 
   <div class="map-container">
-    <canvas id="mapCanvas"></canvas>
+    <div id="map" style="height:100%; width:100%;"></div>
 
     <!-- Loading -->
     <div class="map-loading" id="map-loading">
@@ -247,259 +251,53 @@ select.map-select option{background:var(--deep);}
   </div>
 </div>
 
-<script>
-// ── Inline data generation (mirrors core.js) ───────────────
-function rng(seed){let s=seed;return()=>{s=(s*16807)%2147483647;return(s-1)/2147483646};}
-function getSeason(ts){const m=new Date(ts).getMonth();return m<3?'Winter':m<6?'Spring':m<9?'Summer':'Fall';}
-function snapToGrid(lat,lng,cs=0.15){return{cell_lat:+(Math.floor(lat/cs)*cs+cs/2).toFixed(5),cell_lng:+(Math.floor(lng/cs)*cs+cs/2).toFixed(5)};}
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
-const CLUSTERS=[{lat:36.85,lng:-75.98},{lat:37.20,lng:-76.10},{lat:36.60,lng:-75.80},{lat:37.80,lng:-76.30},{lat:36.40,lng:-75.70}];
-const BEHAVIORS=['feeding','transiting','resting','unknown'];
-const now=Date.now();
+<script type="module">
+import { API } from './core.js';
 
-function generateApproved(){
-  const r=rng(42);const s=[];
-  for(let i=0;i<60;i++){
-    const c=CLUSTERS[Math.floor(r()*CLUSTERS.length)];
-    const lat=c.lat+(r()-.5)*.6,lng=c.lng+(r()-.5)*.5;
-    const daysAgo=Math.floor(r()*180);
-    if(r()>.25)s.push({lat:+lat.toFixed(5),lng:+lng.toFixed(5),count:Math.round(1+r()*r()*120),behavior:BEHAVIORS[Math.floor(r()*BEHAVIORS.length)],submitted_at:new Date(now-daysAgo*86400000).toISOString(),...snapToGrid(lat,lng)});
-  }
-  return s;
-}
+const map = L.map('map').setView([36.8, -75.9], 7);
 
-function aggregateCells(sightings,cs=0.15){
-  const cells={};
-  sightings.forEach(s=>{
-    const k=`${s.cell_lat},${s.cell_lng}`;
-    if(!cells[k])cells[k]={cell_lat:s.cell_lat,cell_lng:s.cell_lng,count:0,ray_total:0,behaviors:{}};
-    cells[k].count++;cells[k].ray_total+=s.count||1;
-    cells[k].behaviors[s.behavior]=(cells[k].behaviors[s.behavior]||0)+1;
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+  attribution: '&copy; OpenStreetMap &copy; CartoDB'
+}).addTo(map);
+window.toggleLayer = () => {};
+window.zoom = () => {};
+window.resetView = () => {};
+window.onSeasonChange = () => {};
+window.redraw = () => {};
+async function loadMap() {
+  const zones = await API.getPublicRiskZones();
+
+  zones.forEach(zone => {
+    const size = zone.cell_size_deg / 2;
+
+    const bounds = [
+      [zone.cell_lat - size, zone.cell_lng - size],
+      [zone.cell_lat + size, zone.cell_lng + size]
+    ];
+
+    const color =
+      zone.risk_tier === 'high' ? 'red' :
+      zone.risk_tier === 'medium' ? 'orange' :
+      'green';
+
+    L.rectangle(bounds, {
+      color,
+      weight: 1,
+      fillOpacity: 0.4
+    })
+    .addTo(map)
+    .bindPopup(`
+      <b>Risk:</b> ${zone.risk_tier}<br>
+      Sightings: ${zone.count}<br>
+      Intensity: ${zone.kde_intensity}
+    `);
   });
-  return Object.values(cells).filter(c=>c.count>=3);
+  document.getElementById('map-loading').classList.add('hide');
 }
 
-function computeKDE(cells,bw=2,cs=0.15){
-  const result={};
-  cells.forEach(src=>{cells.forEach(tgt=>{
-    const dLat=(src.cell_lat-tgt.cell_lat)/cs,dLng=(src.cell_lng-tgt.cell_lng)/cs;
-    const d2=dLat*dLat+dLng*dLng;
-    if(d2>bw*bw*4)return;
-    const w=src.count*Math.exp(-.5*d2/(bw*bw));
-    const k=`${tgt.cell_lat},${tgt.cell_lng}`;
-    result[k]=(result[k]||0)+w;
-  });});
-  const mx=Math.max(...Object.values(result),1);
-  return cells.map(c=>({...c,kde:+((result[`${c.cell_lat},${c.cell_lng}`]||0)/mx).toFixed(3)}));
-}
-
-function scoreRisk(kdeCells){
-  return kdeCells.map(c=>{
-    const fw=Math.min(1,.2+Math.max(0,1-Math.abs(c.cell_lng+75.9)*3)*.8);
-    const score=c.kde*fw;
-    return{...c,fw:+fw.toFixed(3),score:+score.toFixed(3),tier:score>.35?'high':score>.12?'medium':'low'};
-  });
-}
-
-// ── State ──────────────────────────────────────────────────
-let ALL_SIGHTINGS=generateApproved();
-let ZONES=scoreRisk(computeKDE(aggregateCells(ALL_SIGHTINGS)));
-
-let layers={hotspot:true,risk:true,dots:false};
-let currentSeason='all';
-let currentRiskFilter='all';
-
-// ── Viewport ──────────────────────────────────────────────
-const BOUNDS={minLat:35.8,maxLat:38.6,minLng:-77.2,maxLng:-74.5};
-let view={lat:(BOUNDS.minLat+BOUNDS.maxLat)/2,lng:(BOUNDS.minLng+BOUNDS.maxLng)/2,scale:1};
-let dragging=false,lastDrag=null;
-
-const canvas=document.getElementById('mapCanvas');
-const ctx=canvas.getContext('2d');
-
-function resize(){
-  const dpr=window.devicePixelRatio||1;
-  const rect=canvas.parentElement.getBoundingClientRect();
-  canvas.width=rect.width*dpr;canvas.height=rect.height*dpr;
-  canvas.style.width=rect.width+'px';canvas.style.height=rect.height+'px';
-  ctx.scale(dpr,dpr);
-  redraw();
-}
-
-function latLngToXY(lat,lng){
-  const W=canvas.parentElement.clientWidth,H=canvas.parentElement.clientHeight;
-  const latRange=BOUNDS.maxLat-BOUNDS.minLat,lngRange=BOUNDS.maxLng-BOUNDS.minLng;
-  const baseX=(lng-view.lng)/lngRange*W*view.scale+W/2;
-  const baseY=(view.lat-lat)/latRange*H*view.scale+H/2;
-  return[baseX,baseY];
-}
-function xyToLatLng(x,y){
-  const W=canvas.parentElement.clientWidth,H=canvas.parentElement.clientHeight;
-  const latRange=BOUNDS.maxLat-BOUNDS.minLat,lngRange=BOUNDS.maxLng-BOUNDS.minLng;
-  const lng=(x-W/2)/W/view.scale*lngRange+view.lng;
-  const lat=-(y-H/2)/H/view.scale*latRange+view.lat;
-  return[lat,lng];
-}
-
-function cellSizePx(){
-  const W=canvas.parentElement.clientWidth;
-  const lngRange=BOUNDS.maxLng-BOUNDS.minLng;
-  return 0.15/lngRange*W*view.scale;
-}
-
-// ── Draw ──────────────────────────────────────────────────
-function getFilteredZones(){
-  let z=ZONES;
-  if(currentSeason!=='all'){
-    const approved=ALL_SIGHTINGS.filter(s=>getSeason(s.submitted_at)===currentSeason);
-    const cells=aggregateCells(approved);
-    z=cells.length?scoreRisk(computeKDE(cells)):[];
-  }
-  if(currentRiskFilter==='high')z=z.filter(c=>c.tier==='high');
-  else if(currentRiskFilter==='medium')z=z.filter(c=>c.tier!=='low');
-  return z;
-}
-
-const RISK_COLORS={high:'rgba(224,84,84,',medium:'rgba(232,131,74,',low:'rgba(79,184,160,'};
-const HOTSPOT_COLOR='rgba(79,184,160,';
-
-function redraw(){
-  const W=canvas.parentElement.clientWidth,H=canvas.parentElement.clientHeight;
-  ctx.clearRect(0,0,W,H);
-
-  // Ocean bg
-  ctx.fillStyle='#0a1628';ctx.fillRect(0,0,W,H);
-
-  // Grid
-  ctx.strokeStyle='rgba(79,184,160,0.05)';ctx.lineWidth=0.5;
-  for(let lat=36;lat<=39;lat+=0.5){const[x,y]=latLngToXY(lat,BOUNDS.minLng);const[x2,y2]=latLngToXY(lat,BOUNDS.maxLng);ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x2,y2);ctx.stroke();}
-  for(let lng=-77;lng<=-74;lng+=0.5){const[x,y]=latLngToXY(BOUNDS.minLat,lng);const[x2,y2]=latLngToXY(BOUNDS.maxLat,lng);ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x2,y2);ctx.stroke();}
-
-  // Coastline approximation (stylized)
-  ctx.strokeStyle='rgba(79,184,160,0.15)';ctx.lineWidth=1.5;ctx.setLineDash([4,3]);
-  const coastPts=[[38.5,-77.0],[38.3,-76.8],[38.0,-76.5],[37.8,-76.2],[37.5,-76.0],[37.2,-76.1],[37.0,-76.0],[36.9,-76.0],[36.7,-75.9],[36.5,-75.8],[36.2,-75.7],[36.0,-75.7]];
-  ctx.beginPath();coastPts.forEach(([lat,lng],i)=>{const[x,y]=latLngToXY(lat,lng);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});ctx.stroke();
-  ctx.setLineDash([]);
-
-  const zones=getFilteredZones();
-  const csz=cellSizePx();
-
-  // Hotspot glow
-  if(layers.hotspot){
-    zones.forEach(z=>{
-      const[cx,cy]=latLngToXY(z.cell_lat,z.cell_lng);
-      const r=csz*0.9;
-      const alpha=0.12+z.kde*0.3;
-      ctx.fillStyle=HOTSPOT_COLOR+alpha+')';
-      ctx.fillRect(cx-r/2,cy-r/2,r,r);
-    });
-  }
-
-  // Risk fill
-  if(layers.risk){
-    zones.forEach(z=>{
-      const[cx,cy]=latLngToXY(z.cell_lat,z.cell_lng);
-      const r=csz*0.78;
-      const alpha=0.25+z.score*0.5;
-      ctx.fillStyle=RISK_COLORS[z.tier]+alpha+')';
-      ctx.strokeStyle=RISK_COLORS[z.tier]+(alpha+0.15)+')';
-      ctx.lineWidth=0.5;
-      const rx=4;
-      roundRect(ctx,cx-r/2,cy-r/2,r,r,rx);
-      ctx.fill();ctx.stroke();
-    });
-  }
-
-  // Sighting dots (generalized to cell centroid)
-  if(layers.dots){
-    const seen=new Set();
-    ALL_SIGHTINGS.forEach(s=>{
-      if(currentSeason!=='all'&&getSeason(s.submitted_at)!==currentSeason)return;
-      const k=`${s.cell_lat},${s.cell_lng}`;
-      if(seen.has(k))return;seen.add(k);
-      const[cx,cy]=latLngToXY(s.cell_lat,s.cell_lng);
-      ctx.beginPath();ctx.arc(cx,cy,4,0,Math.PI*2);
-      ctx.fillStyle='rgba(79,184,160,0.8)';ctx.fill();
-    });
-  }
-
-  // Coord labels
-  ctx.fillStyle='rgba(232,244,240,0.2)';ctx.font='10px DM Sans';ctx.textAlign='center';
-  for(let lat=36;lat<=39;lat+=1){const[x,y]=latLngToXY(lat,BOUNDS.minLng+0.2);ctx.fillText(lat+'°N',x+14,y);}
-
-  // Update stats
-  document.getElementById('sc-sightings').textContent=ALL_SIGHTINGS.length;
-  document.getElementById('sc-zones').textContent=zones.length;
-  document.getElementById('sc-high').textContent=zones.filter(z=>z.tier==='high').length;
-}
-
-function roundRect(ctx,x,y,w,h,r){
-  ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();
-}
-
-// ── Tooltip ──────────────────────────────────────────────
-const tooltip=document.getElementById('tooltip');
-function showTooltip(zone,px,py){
-  const W=canvas.parentElement.clientWidth,H=canvas.parentElement.clientHeight;
-  const top=py<H/2;const left=px<W*0.7;
-  tooltip.style.left=(left?px+12:px-230)+'px';
-  tooltip.style.top=(top?py+12:py-130)+'px';
-  const topBeh=zone.behaviors?Object.entries(zone.behaviors).sort((a,b)=>b[1]-a[1])[0]?.[0]||'—':'—';
-  tooltip.innerHTML=`
-    <div class="tt-title">Migration zone <span class="tt-badge ${zone.tier}">${zone.tier} risk</span></div>
-    <div class="tt-row"><span>Sightings</span><span>${zone.count}</span></div>
-    <div class="tt-row"><span>Rays logged</span><span>${zone.ray_total||'—'}</span></div>
-    <div class="tt-row"><span>KDE intensity</span><span>${(zone.kde*100).toFixed(0)}%</span></div>
-    <div class="tt-row"><span>Fishing weight</span><span>${(zone.fw*100).toFixed(0)}%</span></div>
-    <div class="tt-row"><span>Top behavior</span><span>${topBeh}</span></div>
-    <div class="tt-footer">Coordinates generalized to ${(0.15*111).toFixed(0)}km cell · Exact locations private</div>`;
-  tooltip.classList.add('show');
-}
-function hideTooltip(){tooltip.classList.remove('show');}
-
-canvas.addEventListener('mousemove',e=>{
-  if(dragging)return;
-  const rect=canvas.getBoundingClientRect();
-  const x=e.clientX-rect.left,y=e.clientY-rect.top;
-  const[lat,lng]=xyToLatLng(x,y);
-  const zones=getFilteredZones();
-  const cs=0.15;
-  const hit=zones.find(z=>Math.abs(z.cell_lat-lat)<cs/2&&Math.abs(z.cell_lng-lng)<cs/2);
-  if(hit){showTooltip(hit,x,y);canvas.style.cursor='pointer';}
-  else{hideTooltip();canvas.style.cursor=dragging?'grabbing':'grab';}
-});
-canvas.addEventListener('mouseleave',hideTooltip);
-
-// ── Pan & zoom ────────────────────────────────────────────
-canvas.addEventListener('mousedown',e=>{dragging=true;lastDrag={x:e.clientX,y:e.clientY};});
-window.addEventListener('mouseup',()=>{dragging=false;});
-canvas.addEventListener('mousemove',e=>{
-  if(!dragging||!lastDrag)return;
-  const W=canvas.parentElement.clientWidth,H=canvas.parentElement.clientHeight;
-  const latRange=BOUNDS.maxLat-BOUNDS.minLat,lngRange=BOUNDS.maxLng-BOUNDS.minLng;
-  view.lat+=((e.clientY-lastDrag.y)/H/view.scale)*latRange;
-  view.lng-=((e.clientX-lastDrag.x)/W/view.scale)*lngRange;
-  lastDrag={x:e.clientX,y:e.clientY};
-  redraw();
-});
-canvas.addEventListener('wheel',e=>{
-  e.preventDefault();
-  const factor=e.deltaY<0?1.12:0.89;
-  view.scale=Math.max(0.5,Math.min(8,view.scale*factor));
-  redraw();
-},{passive:false});
-
-function zoom(factor){view.scale=Math.max(0.5,Math.min(8,view.scale*factor));redraw();}
-function resetView(){view={lat:(BOUNDS.minLat+BOUNDS.maxLat)/2,lng:(BOUNDS.minLng+BOUNDS.maxLng)/2,scale:1};redraw();}
-
-// ── Layer toggles ─────────────────────────────────────────
-function toggleLayer(name,btn){layers[name]=!layers[name];btn.classList.toggle('on',layers[name]);redraw();}
-function onSeasonChange(){currentSeason=document.getElementById('season-sel').value;redraw();}
-
-// ── Init ──────────────────────────────────────────────────
-window.addEventListener('resize',resize);
-resize();
-setTimeout(()=>{document.getElementById('map-loading').classList.add('hide');},700);
+loadMap();
 </script>
 </body>
 </html>
