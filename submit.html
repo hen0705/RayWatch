@@ -101,6 +101,7 @@ input[type=text],input[type=email],input[type=number],input[type=date],input[typ
   outline:none;
   transition:border-color .2s,background .2s;
   -webkit-appearance:none;
+  appearance: none;
 }
 input:focus,select:focus,textarea:focus{
   border-color:var(--ray);
@@ -474,7 +475,13 @@ input.error,select.error,textarea.error{border-color:var(--warn);}
   </div>
 </div>
 
-<script>
+<script type="module">
+  import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
+
+const supabase = createClient(
+  "https://bintflfjmtrpdnxyccho.supabase.co",
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJpbnRmbGZqbXRycGRueHljY2hvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3MjEwNDEsImV4cCI6MjA5MTI5NzA0MX0.Q9CCD1S8geIwsR6bLs7TH__urE7V1U9WZsj2Isv0sfk"
+);
 // ── Inline core (subset needed for submission) ──
 function uuid(){return'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.random()*16|0;return(c==='x'?r:(r&0x3|0x8)).toString(16)});}
 function snapToGrid(lat,lng,cs=0.15){const cl=Math.floor(lat/cs)*cs+cs/2,cg=Math.floor(lng/cs)*cs+cs/2;return{cell_lat:+cl.toFixed(5),cell_lng:+cg.toFixed(5)};}
@@ -644,13 +651,18 @@ document.getElementById('btn-submit').addEventListener('click', async () => {
     cell_size_deg: 0.15,
   };
 
-  // Simulate API call
-  await new Promise(r => setTimeout(r, 600));
+  // send to Supabase
+const { data, error } = await supabase
+  .from('sightings')
+  .insert([payload]);
 
-  // Store in localStorage for demo
-  const stored = JSON.parse(localStorage.getItem('rw_sightings') || '[]');
-  stored.push(payload);
-  localStorage.setItem('rw_sightings', JSON.stringify(stored));
+if (error) {
+  console.error(error);
+  alert("Error submitting sighting");
+  btn.disabled = false;
+  btn.innerHTML = 'Submit sighting';
+  return;
+}
 
   document.getElementById('form-section').style.display = 'none';
   const ss = document.getElementById('success-screen');
@@ -671,6 +683,7 @@ document.getElementById('btn-another').addEventListener('click', () => {
   updateProgress();
   window.scrollTo(0, 0);
 });
+
 </script>
 </body>
 </html>
