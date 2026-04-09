@@ -69,7 +69,7 @@ export const SCHEMA = {
 
 export const GeneralizationEngine = {
   CELL_SIZE: 0.15,       // degrees (~15km)
-  MIN_K: 3,              // k-anonymity minimum group size
+  MIN_K: 1,              // k-anonymity minimum group size
   KDE_BANDWIDTH: 2,      // cells
   FISHING_LAYER: null,   // injected externally
 
