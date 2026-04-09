@@ -399,8 +399,35 @@ async function loadData() {
     return;
   }
 
-  STORE = data;
-  loadData();
+  // ✅ normalize data so UI doesn't break
+  STORE = data.map(d => ({
+    id: d.id,
+    submitted_at: d.submitted_at || new Date().toISOString(),
+    status: d.status || 'pending',
+    lat: d.lat,
+    lng: d.lng,
+    count: d.count || 0,
+    behavior: d.behavior || 'unknown',
+    depth_m: d.depth_m ?? null,
+    water_temp_c: d.water_temp_c ?? null,
+    submitter_name: d.submitter_name || null,
+    submitter_type: d.submitter_type || 'public',
+    notes: d.notes || null,
+    reviewed_by: d.reviewed_by || null,
+    reviewed_at: d.reviewed_at || null,
+    reject_reason: d.reject_reason || null,
+    accuracy_m: d.accuracy_m || 0,
+
+    // 🔥 IMPORTANT: generate grid if missing
+    cell_lat: d.cell_lat ?? d.lat,
+    cell_lng: d.cell_lng ?? d.lng,
+    cell_size_deg: d.cell_size_deg ?? 0.15
+  }));
+
+  console.log("STORE:", STORE);
+
+  refreshStats();
+  renderQueue();
 }
 let currentFilter = 'pending';
 let currentPage = 1;
