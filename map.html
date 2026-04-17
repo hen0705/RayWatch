@@ -275,20 +275,23 @@ window.resetView = () => {};
 window.onSeasonChange = () => {};
 window.redraw = () => {};
 
-async function loadMap() {
-  try {
-    console.log("Fetching from Supabase...");
+async function loadVisibleSightings() {
+  const bounds = map.getBounds();
 
-    const { data, error } = await supabase
-      .from('sightings')
-      .select('*')
-      .eq('status', 'approved');
+  const { data, error } = await supabase.rpc('get_sightings_in_bounds', {
+    min_lat: bounds.getSouth(),
+    max_lat: bounds.getNorth(),
+    min_lng: bounds.getWest(),
+    max_lng: bounds.getEast()
+  });
 
-    if (error) {
-      console.error(error);
-      return;
-    }
+  if (error) {
+    console.error(error);
+    return [];
+  }
 
+  return data;
+}
     console.log("DATA:", data);
 
     // run your engine
